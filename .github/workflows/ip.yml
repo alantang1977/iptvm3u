@@ -14,6 +14,7 @@ jobs:
         uses: actions/checkout@v3
         with:
           persist-credentials: true
+          fetch-depth: 0  # 新增：拉取完整提交历史，避免rebase/推送冲突
 
       - name: Setup Python
         uses: actions/setup-python@v4
@@ -36,8 +37,8 @@ jobs:
 
       - name: Commit and push changes
         run: |
-          git config --global user.name "github-actions"
-          git config --global user.email "github-actions@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"  # 建议用官方bot命名（非必须，但更规范）
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
           
           # 1. 暂存所有可能的变动（包括新生成的文件）
           git add .
@@ -48,10 +49,12 @@ jobs:
           else
             git commit -m "自动更新：数据及IP列表 [$(date '+%Y-%m-%d %H:%M')]"
             
-            # 3. 强制拉取并变基
-            # 如果还有报错，这里使用 --autostash 确保万无一失
+            # 3. 强制拉取并变基（解决可能的远程冲突）
             git pull origin main --rebase --autostash
             
-            # 4. 推送
+            # 4. 推送（显式使用GITHUB_TOKEN认证）
             git push origin main
           fi
+        env:
+          # 关键修复：注入默认GITHUB_TOKEN，完成认证
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
