@@ -14,7 +14,8 @@ jobs:
         uses: actions/checkout@v3
         with:
           persist-credentials: true
-          fetch-depth: 0  # 新增：拉取完整提交历史，避免rebase/推送冲突
+          fetch-depth: 0  # 必须：拉取完整仓库历史，解决rebase/push冲突
+          ref: main       # 显式指定分支，避免默认分支不一致
 
       - name: Setup Python
         uses: actions/setup-python@v4
@@ -37,24 +38,27 @@ jobs:
 
       - name: Commit and push changes
         run: |
-          git config --global user.name "github-actions[bot]"  # 建议用官方bot命名（非必须，但更规范）
+          # 规范Git身份（官方推荐的bot账号）
+          git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           
-          # 1. 暂存所有可能的变动（包括新生成的文件）
+          # 暂存所有变动
           git add .
           
-          # 2. 检查是否有变动需要提交
+          # 检查是否有变动，无变动则跳过
           if git diff --staged --quiet; then
-            echo "⚠️ 没有发现任何文件变动，跳过。"
-          else
-            git commit -m "自动更新：数据及IP列表 [$(date '+%Y-%m-%d %H:%M')]"
-            
-            # 3. 强制拉取并变基（解决可能的远程冲突）
-            git pull origin main --rebase --autostash
-            
-            # 4. 推送（显式使用GITHUB_TOKEN认证）
-            git push origin main
+            echo "⚠️ 无文件变动，跳过提交推送"
+            exit 0
           fi
+          
+          # 提交变动
+          git commit -m "自动更新：数据及IP列表 [$(date '+%Y-%m-%d %H:%M')]"
+          
+          # 拉取远程最新代码（解决推送冲突）
+          git pull origin main --rebase --autostash
+          
+          # 推送代码（核心：用GITHUB_TOKEN认证）
+          git push origin main
         env:
-          # 关键修复：注入默认GITHUB_TOKEN，完成认证
+          # 关键：注入GitHub自动生成的Token，解决403权限问题
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
