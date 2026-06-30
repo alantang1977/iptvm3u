@@ -1,5 +1,9 @@
 name: FOFA IP
 
+# 解决 GITHUB_TOKEN 默认只读导致 push 403 错误
+permissions:
+  contents: write
+
 on:
   schedule:
     - cron: "*/15 * * * *"
@@ -57,8 +61,8 @@ jobs:
           # 拉取远程最新代码（解决推送冲突）
           git pull origin main --rebase --autostash
           
-          # 推送代码（核心：用GITHUB_TOKEN认证）
-          git push origin main
+          # 带Token完整地址推送，修复403权限拒绝
+          git push https://x-access-token:${GITHUB_TOKEN}@github.com/alantang1977/iptvm3u.git main
         env:
-          # 关键：注入GitHub自动生成的Token，解决403权限问题
+          # 注入GitHub自动生成的Token
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
